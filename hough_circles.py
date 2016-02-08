@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 
 points = []
+all_points = []
 #distance from left to first circle is around 13, radius is 8-9, dist btw 2 circles is 6
 #distance btw circle in first row and second row is 18
 dist_from_left = 13
@@ -13,12 +14,13 @@ def detectCircles(cimg):
 	#detect circles using hough circle algorithm
 	circles = cv2.HoughCircles(img,cv2.HOUGH_GRADIENT,1,10,param1=30,param2=10,minRadius=2,maxRadius=10)
 	circles = np.uint16(np.around(circles))
-
+	print(circles)
 	'''iterate through each circle found, circles is a three level list with one element at outer
 	level and three elements at innermost level. So we need to slice it'''
 	for i in circles[0,:]:
 		flag = True
 		count = 0
+		cv2.circle(cimg,(i[0],i[1]),i[2],(0,255,0),2)
 		#check if the circle detected is filled
 		for x in range(i[0]-i[2],i[0]):
 			#checking no of pixels within the circle that are black
@@ -34,14 +36,15 @@ def detectCircles(cimg):
 	'''sort the list with respect to axis 1 (y co-ordinate) to arrange the points from top
 	to bottom in the image''' 
 	points1.sort(key=lambda y: y[1]) 
+	print(len(all_points))
 	cv2.imwrite("/home/neel/opencvproject/REAP/test.jpg",cimg)
 	return points1
 
-def crop():
+def crop(cimg):
 	for i in range(0,len(points)-1):
 		#print("i : " + str(i))
 		x1 = points[i][0]-points[i][2] # This line is not required
-		x2 = img.shape[1] # width of the image
+		x2 = cimg.shape[1] # width of the image
 		y1 = points[i][1]-points[i][2]
 		y2 = points[i+1][1]
 		#check if the two circles are from two different questions and not the same question
@@ -49,7 +52,7 @@ def crop():
 			y1 = points[i-1][1]-points[i-1][2]
 			x1 = points[i-1][0]-points[i-1][2]
 			# get the region of interest i.e the answer part
-			roi = img[y1:y2,x1:x2]
+			roi = cimg[y1:y2,x1:x2]
 			cv2.imwrite("/home/neel/opencvproject/REAP/answers/"+str(part1)+part2+".jpg",roi)
 		else:
 			#circles are from the same question, get the first part of the question number
@@ -71,11 +74,11 @@ def crop():
 			#print(points[i][0],points[i+1][0])
 
 		if i == 6:
-			y2 = img.shape[0] #height of the image
+			y2 = cimg.shape[0] #height of the image
 			print(x1,y1,x2,y2)
-			roi = img[y1:y2,x1:x2]
+			roi = cimg[y1:y2,x1:x2]
 			cv2.imwrite("/home/neel/opencvproject/REAP/answers/"+str(part1)+part2+"1.jpg",roi)
-#ssup?
+
 def quesNumber(x1):
 	#distance from left to end of first circle
 	dist = dist_from_left + points[0][2]*2
@@ -97,20 +100,20 @@ if __name__ == '__main__':
 	#image = input("Enter the name of the image with extension : ")
 	
 	#read the image
-	img = cv2.imread('/home/neel/opencvproject/testimages/test'+".jpg",image,0)
-	
+	cimg = cv2.imread('/home/neel/opencvproject/testimages/test.jpg',0)
+	img = cimg[0:cimg.shape[0],0:145]
 	img = cv2.medianBlur(img,5)
 	#img = cv2.GaussianBlur(img,(5,5),0)
 
 	#convert to grayscale image
-	cimg = cv2.cvtColor(img,cv2.COLOR_GRAY2BGR)
+	cimg = cv2.cvtColor(cimg,cv2.COLOR_GRAY2BGR)
 	thresh = cv2.adaptiveThreshold(img,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,11,2)
 	
 	#get the co-ordinates and radius of filled circles
 	points = detectCircles(cimg)
 	
 	#crop the answer parts and also detect corresponding question numbers
-	crop()
+	crop(cimg)
 	print(points)
 
 	cv2.imwrite("/home/neel/opencvproject/REAP/thresh.jpg",thresh)
