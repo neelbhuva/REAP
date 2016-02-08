@@ -34,7 +34,7 @@ def detectCircles(cimg):
 	'''sort the list with respect to axis 1 (y co-ordinate) to arrange the points from top
 	to bottom in the image''' 
 	points1.sort(key=lambda y: y[1]) 
-	cv2.imwrite("/home/neel/opencvproject/week1/test.jpg",cimg)
+	cv2.imwrite("/home/neel/opencvproject/REAP/test.jpg",cimg)
 	return points1
 
 def crop():
@@ -50,7 +50,7 @@ def crop():
 			x1 = points[i-1][0]-points[i-1][2]
 			# get the region of interest i.e the answer part
 			roi = img[y1:y2,x1:x2]
-			cv2.imwrite("/home/neel/opencvproject/week1/answers/"+str(part1)+part2+".jpg",roi)
+			cv2.imwrite("/home/neel/opencvproject/REAP/answers/"+str(part1)+part2+".jpg",roi)
 		else:
 			#circles are from the same question, get the first part of the question number
 			part1 = quesNumber(points[i][0])
@@ -74,8 +74,8 @@ def crop():
 			y2 = img.shape[0] #height of the image
 			print(x1,y1,x2,y2)
 			roi = img[y1:y2,x1:x2]
-			cv2.imwrite("/home/neel/opencvproject/week1/answers/"+str(part1)+part2+"1.jpg",roi)
-
+			cv2.imwrite("/home/neel/opencvproject/REAP/answers/"+str(part1)+part2+"1.jpg",roi)
+#ssup?
 def quesNumber(x1):
 	#distance from left to end of first circle
 	dist = dist_from_left + points[0][2]*2
@@ -113,7 +113,7 @@ if __name__ == '__main__':
 	crop()
 	print(points)
 
-	cv2.imwrite("/home/neel/opencvproject/week1/thresh.jpg",thresh)
+	cv2.imwrite("/home/neel/opencvproject/REAP/thresh.jpg",thresh)
 	cv2.imshow('detected circles',cimg)
 	cv2.waitKey(0)
 	cv2.destroyAllWindows()
