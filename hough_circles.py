@@ -94,10 +94,10 @@ def quesNumber(x1):
 
 
 if __name__ == '__main__':	
-	image = input("Enter the name of the image with extension : ")
+	#image = input("Enter the name of the image with extension : ")
 	
 	#read the image
-	img = cv2.imread('/home/neel/opencvproject/testimages/'+image,0)
+	img = cv2.imread('/home/neel/opencvproject/testimages/test'+".jpg",image,0)
 	
 	img = cv2.medianBlur(img,5)
 	#img = cv2.GaussianBlur(img,(5,5),0)
