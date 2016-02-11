@@ -8,25 +8,27 @@ all_points = []
 dist_from_left = 13
 dist_btw_circles = 6
 
-def detectCircles(cimg):
+def detectCircles(img,cimg):
 	points1 = []
 
 	#detect circles using hough circle algorithm
 	circles = cv2.HoughCircles(img,cv2.HOUGH_GRADIENT,1,10,param1=30,param2=10,minRadius=2,maxRadius=10)
 	circles = np.uint16(np.around(circles))
-	print(circles)
+	#print(circles)
 	'''iterate through each circle found, circles is a three level list with one element at outer
 	level and three elements at innermost level. So we need to slice it'''
 	for i in circles[0,:]:
 		flag = True
 		count = 0
-		cv2.circle(cimg,(i[0],i[1]),i[2],(0,255,0),2)
 		#check if the circle detected is filled
 		for x in range(i[0]-i[2],i[0]):
 			#checking no of pixels within the circle that are black
 			if(thresh[i[1],x] == 0):
 				count = count + 1
-		#print("count: "+str(count)+" Radius: "+str(i[2]))
+		print("count: "+str(count)+" Radius: "+str(i[2]))
+		if(i[2] > 4):
+			all_points.append([i[0],i[1],i[2]])
+			cv2.circle(cimg,(i[0],i[1]),i[2],(0,255,0),2)
 		if(i[2] > 6 and count > i[2]-3):
 			#filled circle found, save the center co-ordinates and the radius
 			points1.append([i[0],i[1],i[2]])
@@ -97,20 +99,23 @@ def quesNumber(x1):
 
 
 if __name__ == '__main__':	
-	#image = input("Enter the name of the image with extension : ")
+	image = input("Enter the name of the image with extension : ")
 	
 	#read the image
-	cimg = cv2.imread('/home/neel/opencvproject/testimages/test.jpg',0)
-	img = cimg[0:cimg.shape[0],0:145]
-	img = cv2.medianBlur(img,5)
-	#img = cv2.GaussianBlur(img,(5,5),0)
+	cimg = cv2.imread('/home/neel/opencvproject/testimages/'+image+'.jpg')
 
 	#convert to grayscale image
-	cimg = cv2.cvtColor(cimg,cv2.COLOR_GRAY2BGR)
+	img = cv2.imread('/home/neel/opencvproject/testimages/'+image+'.jpg',0)
+
+	#get the part before the left margin
+	img = img[0:img.shape[0],0:150]
+	
+	#img = cv2.GaussianBlur(img,(5,5),0)
+	img = cv2.medianBlur(img,5)
 	thresh = cv2.adaptiveThreshold(img,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,11,2)
 	
 	#get the co-ordinates and radius of filled circles
-	points = detectCircles(cimg)
+	points = detectCircles(img,cimg)
 	
 	#crop the answer parts and also detect corresponding question numbers
 	crop(cimg)
