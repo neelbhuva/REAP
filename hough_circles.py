@@ -53,12 +53,12 @@ def detectCircles(img,cimg):
 				info = "Could not process the image"
 				writeToCsv(file,USN,info)
 				print("Error : Could not process image "+file+" belonging to USN : "+USN)
-				#circles = []
-				#return [],circles
+				circles = []
+				return [],circles
 	except TypeError:
 		print("-------_TypeError---------\nCould not process image "+file+" belonging to USN : "+USN+"---------------------")
 		return
-	#print(len(circles))
+	print(len(circles))
 	#print(circles)
 	c = 1
 	for i in circles:
@@ -75,9 +75,16 @@ def detectCircles(img,cimg):
 			#checking no of pixels within the circle that are black
 			if(thresh[y,i[0]] == 0):
 				ycount = ycount + 1
+		#Ac and DE are lines at 45degree angle through center forming a X
+		l = getACDE(i)
+		#print(l)
+		count_CA = getCountAlongCA(l,thresh)
+		count_DE = getCountAlongDE(l,thresh)
+		print(count_CA,count_DE)
 		print("xcount: "+str(xcount)+" ycount: "+str(ycount)+" Radius: "+str(i[2])+" Center: "+str(i)+" "+str(c))
 		c = c + 1
-		if(xcount >= 2*(i[2]-4) and ycount >= 2*(i[2]-4) ):
+		if((xcount >= 2*(i[2]-5) and ycount >= 2*(i[2]-5)) and (count_CA >= 6 and count_DE >= 6) ):
+			print("yes")
 			#filled circle found, save the center co-ordinates and the radius
 			points1.append([i[0],i[1],i[2]])
 			#draw on filled circles in original image to highlight them
@@ -88,6 +95,42 @@ def detectCircles(img,cimg):
 	points1.sort(key=lambda y: y[1]) 
 	cv2.imwrite(path+"/test/"+ str((int)(random.random()*100)) + image_extension,cimg)
 	return points1,circles
+
+def getACDE(circle):
+	l = []
+	OB = circle[2] / math.sqrt(2)
+	l.append((int)(circle[0] + OB)) #Ax
+	l.append((int)(circle[1] - OB)) #Ay
+	l.append((int)(circle[0] - OB)) #Cx
+	l.append((int)(circle[1] + OB)) #Cy
+	l.append((int)(circle[0] - OB)) #Dx
+	l.append((int)(circle[1] - OB)) #Dy
+	l.append((int)(circle[0] + OB)) #Ex
+	l.append((int)(circle[1] + OB)) #Ey
+	return l
+
+def getCountAlongCA(l,thresh):
+	x = l[2]
+	y = l[3]
+	c = 0
+	while x <= l[0] and y >= l[1]:
+		#print(x,y,thresh[y,x])
+		if thresh[y,x] == 0:
+			c = c + 1
+		x = x + 1
+		y = y - 1
+	return c
+
+def getCountAlongDE(l,thresh):
+	x = l[4]
+	y = l[5]
+	c = 0
+	while x <= l[6] and y <= l[7]:
+		if thresh[y,x] == 0:
+			c = c + 1
+		x = x + 1
+		y = y + 1
+	return c
 
 def eliminate_letters(circles):
 	i = 0
@@ -235,10 +278,13 @@ def addPoints(circles):
 def createNewPoints(temp,index):
 	diff = []
 	mylist = []
+	ypoints = []
 	temp = temp[0:index]
 	for i in range(0,index):
 		mylist.append(temp[i][0])
+		ypoints.append(temp[i][1])
 	mylist.sort()
+	y_average = (int)(statistics.mean(ypoints))
 	#print(temp)
 	#print(mylist)
 	for i in range(0,len(mylist)-1):
@@ -263,7 +309,7 @@ def createNewPoints(temp,index):
 				xindex = i+1
 				xvalue = mylist[xindex]
 				mylist.insert(xindex+1,xvalue)
-			temp1.append([xvalue+average,temp[index-1][1],temp[index-1][2]])
+			temp1.append([xvalue+average,y_average,temp[index-1][2]])
 		#print("temp :")
 		#print(temp1)
 		return temp1,xindex
@@ -346,8 +392,24 @@ def writeToCsv(file,USN,info):
 	with open('/var/www/html/REAP/imageProcessing/error.csv', 'a') as csvfile:
   		fieldnames = ['USN','Error']
   		writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-  		print(message["USN"])
+  		#print(message["USN"])
   		writer.writerow({'USN': message["USN"], 'Error': message["v"]})
+
+def validatePoints(points):
+	i = 0
+	while i < len(points)-1 :
+		if points[i+1][1] - points[i][1] > 100:
+			points.pop(i)
+			info = "One of the marked circles could not be detected in 2 rows of same question"
+			writeToCsv(file,USN,info)
+		else:
+			i = i + 2
+	#if the partner of undetected circle is the last one, pop it
+	if len(points) % 2 != 0:
+		points.pop(len(points)-1)
+		info = "One of the marked circles could not be detected in 2 rows of same question"
+		writeToCsv(file,USN,info)
+	return points
 
 def resize(image):
 	height,width = image.shape[:2]
@@ -377,7 +439,7 @@ if __name__ == '__main__':
 			img = cv2.imread(file,0)
 			img = resize(img)
 			#get the part before the left margin
-			img = img[0:img.shape[0],0:170]	
+			img = img[0:img.shape[0],0:190]	
 			#cv2.imshow("img",img)
 			#cv2.waitKey(0)
 			#img = cv2.GaussianBlur(img,(5,5),0)
@@ -390,19 +452,24 @@ if __name__ == '__main__':
 			try:
 				points,circles = detectCircles(img,cimg)
 				if len(circles) == 0:
-					continue
+					raise Exception('Error')
 			except:
-				info = "Could not process the image"
+				info = "Could not detect circles preoperly"
 				writeToCsv(file,USN,info)
 				#print("-------_ERROR--------\nCould not process image "+file+" belonging to USN : "+USN+"---------------------")
-
+			#check if only one marked circle is detected in 2 rows and pop it from points
+			
 			try:
+				if len(circles) == 0:
+					raise Exception('Error')
+				points = validatePoints(points)
+				print(points)
 				#crop the answer parts and also detect corresponding question numbers
 				crop(cimg,points,circles)
 				#cv2.imshow('detected circles',cimg)
 				#cv2.waitKey(0)
 			except:
-				info = "Could not process the image"
+				info = "Could not crop answers preoperly"
 				writeToCsv(file,USN,info)
 				#print("-------_ERROR--------\nCould not process image "+file+" belonging to USN : "+USN+"---------------------")
 
