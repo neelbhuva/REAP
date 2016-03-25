@@ -4,7 +4,7 @@ import json
 import glob, os, sys
 import random, math, statistics
 from statistics import StatisticsError
-import csv
+import csv,pymysql
 #circles should not be very thick nor very thin, 2px is ideal
 #distance from left to first circle is around 13, radius is 8-9, dist btw 2 circles is 6
 #distance btw circle in first row and second row is 18
@@ -248,7 +248,7 @@ def crop(cimg,points,circles):
 				roi = cimg[y1:y2,0:x2]
 				#cv2.imwrite(path+"/"+USN+"/"+test_name+sub_code+
 				#	str(part1)+part2+str(year)+image_extension,roi)
-			#insertInDb(path,USN,image_extension,str(part1)+part2)
+			insertInDb(path,USN,image_extension,str(part1)+part2)
 	except (RuntimeError, TypeError, NameError):
 		print("-------_ERROR--------\nCould not process image "+file+" belonging to USN : "+USN+"---------------------")
 	except:
@@ -257,31 +257,42 @@ def crop(cimg,points,circles):
 
 def insertInDb(path,USN,image_extension,qno):
 	print("In insertion")
-	conn = pymysql.connect(host='localhost', user='root', passwd='himanshu', db='REAP')
+	print(path,USN,image_extension,qno)
+	conn = pymysql.connect(host='localhost', user='root', passwd='paswrd', db='REAP')
 	print("conected")
 	cur = conn.cursor()
 	cur.execute("SELECT qp_id FROM question_paper WHERE examtype=%s and sub_code=%s",(sys.argv[1],sys.argv[2]))
 	row = cur.fetchone()
 	qp_id = row[0]
-	cur.close()
-	conn.close()
-	conn.connect()
-	cur=conn.cursor()
+	print("Question paper id:"+ str(qp_id))
+	#cur.close()
+	#conn.close()
+	#conn.connect()
+	#cur = conn.cursor()
 	cur.execute("SELECT question_id FROM question WHERE qp_id =%s and question_num=%s",(qp_id,qno))
 	row = cur.fetchone()
 	ques_id = row[0]
-	URL = USN + "/" + examtype + sub_code + qno + year + image_extension
-	print("URL")
+	print("Question Id:"+ str(ques_id))
+	examtype = sys.argv[1]
+	sub_code = sys.argv[2]
+	gen_name = examtype + sub_code + qno + year + image_extension
+	URL = USN + "/" + gen_name
+	print(URL)
 	try:
 		cur.execute("INSERT INTO image values(NULL,%s,%s,%s,%s,0)",(ques_id,USN,URL,gen_name))
 		conn.commit()
+		print("commited")
+		cur.close()
+		conn.close()
 	except:
 		print("Rollback")
 		conn.rollback()
+		print("Rollback")
+		cur.close()
+		conn.close()
 	#cur.execute('SELECT last_insert_id()')
 	#row = cur.fetchone()
 	#image_id = row[0]
-	conn.close()
 
 def addPoints(circles):
 	#print("In addPoints")
