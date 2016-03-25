@@ -12,6 +12,7 @@ import csv
 path = ""
 image_extension = ""
 source_path = ""
+year = ""
 #USN = "1pi12cs106" #run eliminate and isrowEmpty for this
 #USN = "1pi12cs105" #run add points and isrowEmpty for this
 #USN = "1pi12cs103"
@@ -31,6 +32,8 @@ def namingConvention():
 	source_path = data["scanned_images_source_path"]
 	examType = sys.argv[1]
 	sub_code = sys.argv[2]
+	global year
+	year = data["year"]
 	return examType,sub_code,data["year"]
 
 
@@ -80,11 +83,11 @@ def detectCircles(img,cimg):
 		#print(l)
 		count_CA = getCountAlongCA(l,thresh)
 		count_DE = getCountAlongDE(l,thresh)
-		print(count_CA,count_DE)
-		print("xcount: "+str(xcount)+" ycount: "+str(ycount)+" Radius: "+str(i[2])+" Center: "+str(i)+" "+str(c))
+		#print(count_CA,count_DE)
+		#print("xcount: "+str(xcount)+" ycount: "+str(ycount)+" Radius: "+str(i[2])+" Center: "+str(i)+" "+str(c))
 		c = c + 1
 		if((xcount >= 2*(i[2]-5) and ycount >= 2*(i[2]-5)) and (count_CA >= 6 and count_DE >= 6) ):
-			print("yes")
+			#print("yes")
 			#filled circle found, save the center co-ordinates and the radius
 			points1.append([i[0],i[1],i[2]])
 			#draw on filled circles in original image to highlight them
@@ -93,7 +96,7 @@ def detectCircles(img,cimg):
 	'''sort the list with respect to axis 1 (y co-ordinate) to arrange the points from top
 	to bottom in the image''' 
 	points1.sort(key=lambda y: y[1]) 
-	cv2.imwrite(path+"/test/"+ str((int)(random.random()*100)) + image_extension,cimg)
+	#cv2.imwrite(path+"/test/"+ str((int)(random.random()*100)) + image_extension,cimg)
 	return points1,circles
 
 def getACDE(circle):
@@ -243,13 +246,42 @@ def crop(cimg,points,circles):
 			if i == len(points)-2:
 				y2 = cimg.shape[0] #height of the image
 				roi = cimg[y1:y2,0:x2]
-				cv2.imwrite(path+"/"+USN+"/"+test_name+sub_code+
-					str(part1)+part2+str(year)+image_extension,roi)
+				#cv2.imwrite(path+"/"+USN+"/"+test_name+sub_code+
+				#	str(part1)+part2+str(year)+image_extension,roi)
+			#insertInDb(path,USN,image_extension,str(part1)+part2)
 	except (RuntimeError, TypeError, NameError):
 		print("-------_ERROR--------\nCould not process image "+file+" belonging to USN : "+USN+"---------------------")
 	except:
 		print("-------_ERROR--------\nCould not process image "+file+" belonging to USN : "+USN+"---------------------")
 		raise
+
+def insertInDb(path,USN,image_extension,qno):
+	print("In insertion")
+	conn = pymysql.connect(host='localhost', user='root', passwd='himanshu', db='REAP')
+	print("conected")
+	cur = conn.cursor()
+	cur.execute("SELECT qp_id FROM question_paper WHERE examtype=%s and sub_code=%s",(sys.argv[1],sys.argv[2]))
+	row = cur.fetchone()
+	qp_id = row[0]
+	cur.close()
+	conn.close()
+	conn.connect()
+	cur=conn.cursor()
+	cur.execute("SELECT question_id FROM question WHERE qp_id =%s and question_num=%s",(qp_id,qno))
+	row = cur.fetchone()
+	ques_id = row[0]
+	URL = USN + "/" + examtype + sub_code + qno + year + image_extension
+	print("URL")
+	try:
+		cur.execute("INSERT INTO image values(NULL,%s,%s,%s,%s,0)",(ques_id,USN,URL,gen_name))
+		conn.commit()
+	except:
+		print("Rollback")
+		conn.rollback()
+	#cur.execute('SELECT last_insert_id()')
+	#row = cur.fetchone()
+	#image_id = row[0]
+	conn.close()
 
 def addPoints(circles):
 	#print("In addPoints")
@@ -388,12 +420,14 @@ def getUSNFromPath(directory):
 def writeToCsv(file,USN,info):
 	message = {}
 	message["USN"] = USN
-	message["v"] = info + " " + file
+	file = file.replace("/var/www/html/","http://localhost/")
+	message["v"] = info
+	message["ImagePath"] = "=HYPERLINK(\""+file+"\")"
 	with open('/var/www/html/REAP/imageProcessing/error.csv', 'a') as csvfile:
-  		fieldnames = ['USN','Error']
+  		fieldnames = ['USN','Error','ImagePath']
   		writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
   		#print(message["USN"])
-  		writer.writerow({'USN': message["USN"], 'Error': message["v"]})
+  		writer.writerow({'USN': message["USN"], 'Error': message["v"], 'ImagePath': message["ImagePath"]})
 
 def validatePoints(points):
 	i = 0
@@ -463,7 +497,7 @@ if __name__ == '__main__':
 				if len(circles) == 0:
 					raise Exception('Error')
 				points = validatePoints(points)
-				print(points)
+				#print(points)
 				#crop the answer parts and also detect corresponding question numbers
 				crop(cimg,points,circles)
 				#cv2.imshow('detected circles',cimg)
