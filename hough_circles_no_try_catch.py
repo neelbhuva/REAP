@@ -48,19 +48,18 @@ def detectCircles(img,cimg):
 	circles = circles[0]
 	circles.sort(key=lambda x : x[1])
 	circles = eliminate_letters(circles)
-	try:
-		if len(circles) < 30:
-			circles = addPoints(circles)
-			#print(circles)
-			if len(circles) != 30:
-				info = "Could not process the image"
-				writeToCsv(file,USN,info)
-				print("Error : Could not process image "+file+" belonging to USN : "+USN)
-				circles = []
-				return [],circles
-	except TypeError:
+	if len(circles) < 30:
+		circles = addPoints(circles)
+		#print(circles)
+		if len(circles) != 30:
+			info = "Could not process the image"
+			writeToCsv(file,USN,info)
+			print("Error : Could not process image "+file+" belonging to USN : "+USN)
+			#circles = []
+			#return [],circles
+	'''except TypeError:
 		print("-------_TypeError---------\nCould not process image "+file+" belonging to USN : "+USN+"---------------------")
-		return
+		return'''
 	print(len(circles))
 	#print(circles)
 	c = 1
@@ -84,7 +83,7 @@ def detectCircles(img,cimg):
 		count_CA = getCountAlongCA(l,thresh)
 		count_DE = getCountAlongDE(l,thresh)
 		#print(count_CA,count_DE)
-		#print("xcount: "+str(xcount)+" ycount: "+str(ycount)+" Radius: "+str(i[2])+" Center: "+str(i)+" "+str(c))
+		print("xcount: "+str(xcount)+" ycount: "+str(ycount)+" Radius: "+str(i[2])+" Center: "+str(i)+" "+str(c))
 		c = c + 1
 		if((xcount >= 2*(i[2]-5) and ycount >= 2*(i[2]-5)) and (count_CA >= 6 and count_DE >= 6) ):
 			#print("yes")
@@ -96,7 +95,7 @@ def detectCircles(img,cimg):
 	'''sort the list with respect to axis 1 (y co-ordinate) to arrange the points from top
 	to bottom in the image''' 
 	points1.sort(key=lambda y: y[1]) 
-	#cv2.imwrite(path+"/test/"+ str((int)(random.random()*100)) + image_extension,cimg)
+	cv2.imwrite(path+"/test/"+ str((int)(random.random()*100)) + image_extension,cimg)
 	return points1,circles
 
 def getACDE(circle):
@@ -208,63 +207,62 @@ def crop(cimg,points,circles):
 		print(circles)
 		print("Error : Could not process image "+file+" belonging to USN : "+USN)'''
 	i = 0
-	try:
-		for i in range(0,len(points)-1):
-			if i % 2 == 0:
-				while(isRowEmpty(circles[j:j+10],points,i)):
-					#print("Flag")
-					j = j + 10
-			#check if two consecutive circles are marked in the same row
-			cancelled = checkIfCancelled(points[i],points[i+1])
-			if cancelled:
-				info = "More than one circle marked in the same row, marked circle number : "+str(i+1)
-				writeToCsv(file,USN,info)
-				#i = i + 3
-				break
-			x1 = points[i][0]-points[i][2] # This line is not required
-			x2 = cimg.shape[1] # width of the image
-			y1 = points[i][1]-points[i][2]
-			y2 = points[i+1][1]
-			#check if the two circles are from two different questions and not the same question
-			if y2-y1 > points[i][2]+50 :
-				y1 = points[i-1][1]-points[i-1][2]
-				#x1 = points[i-1][0]-points[i-1][2]
-				x1 = 0
-				# get the region of interest i.e the answer part
-				roi = cimg[y1:y2,x1:x2]
-				cv2.imwrite(path+"/"+USN+"/"+test_name+sub_code
-					+str(part1)+part2+str(year)+image_extension,roi)
-			else:
-				#circles are from the same question, get the first part of the question number
-				part1 = getQuesNumber(circles[j:j+5],points[i][0],points[i][2])
-			#get the second part
-				part2 = getQuesNumber(circles[j+5:j+10],points[i+1][0],points[i][2])
+	for i in range(0,len(points)-1):
+		if i % 2 == 0:
+			while(isRowEmpty(circles[j:j+10],points,i)):
+				#print("Flag")
 				j = j + 10
-				part2 = getCorrespondingLetter(part2)
-				print("\nQuestion Number : "+str(part1)+part2)
+		#check if two consecutive circles are marked in the same row
+		cancelled = checkIfCancelled(points[i],points[i+1])
+		if cancelled:
+			info = "More than one circle marked in the same row, marked circle number : "+str(i+1)
+			writeToCsv(file,USN,info)
+			#i = i + 3
+			break
+		x1 = points[i][0]-points[i][2] # This line is not required
+		x2 = cimg.shape[1] # width of the image
+		y1 = points[i][1]-points[i][2]
+		y2 = points[i+1][1]
+		#check if the two circles are from two different questions and not the same question
+		if y2-y1 > points[i][2]+50 :
+			y1 = points[i-1][1]-points[i-1][2]
+			#x1 = points[i-1][0]-points[i-1][2]
+			x1 = 0
+			# get the region of interest i.e the answer part
+			roi = cimg[y1:y2,x1:x2]
+			cv2.imwrite(path+"/"+USN+"/"+test_name+sub_code
+				+str(part1)+part2+str(year)+image_extension,roi)
+		else:
+			#circles are from the same question, get the first part of the question number
+			part1 = getQuesNumber(circles[j:j+5],points[i][0],points[i][2])
+			#get the second part
+			part2 = getQuesNumber(circles[j+5:j+10],points[i+1][0],points[i][2])
+			j = j + 10
+			part2 = getCorrespondingLetter(part2)
+			print("\nQuestion Number : "+str(part1)+part2)
 
-			if i == len(points)-2:
-				y2 = cimg.shape[0] #height of the image
-				roi = cimg[y1:y2,0:x2]
-				#cv2.imwrite(path+"/"+USN+"/"+test_name+sub_code+
-				#	str(part1)+part2+str(year)+image_extension,roi)
-			insertInDb(path,USN,image_extension,str(part1)+part2)
-	except (RuntimeError, TypeError, NameError):
+		if i == len(points)-2:
+			y2 = cimg.shape[0] #height of the image
+			roi = cimg[y1:y2,0:x2]
+			cv2.imwrite(path+"/"+USN+"/"+test_name+sub_code+
+				str(part1)+part2+str(year)+image_extension,roi)
+		insertInDb(path,USN,image_extension,str(part1)+part2)
+	'''except (RuntimeError, TypeError, NameError):
 		print("-------_ERROR--------\nCould not process image "+file+" belonging to USN : "+USN+"---------------------")
 	except:
 		print("-------_ERROR--------\nCould not process image "+file+" belonging to USN : "+USN+"---------------------")
-		raise
+		raise'''
 
 def insertInDb(path,USN,image_extension,qno):
-	print("In insertion")
-	print(path,USN,image_extension,qno)
+	#print("In insertion")
+	#print(path,USN,image_extension,qno)
 	conn = pymysql.connect(host='localhost', user='root', passwd='paswrd', db='REAP')
-	print("conected")
+	#print("conected")
 	cur = conn.cursor()
 	cur.execute("SELECT qp_id FROM question_paper WHERE examtype=%s and sub_code=%s",(sys.argv[1],sys.argv[2]))
 	row = cur.fetchone()
 	qp_id = row[0]
-	print("Question paper id:"+ str(qp_id))
+	#print("Question paper id:"+ str(qp_id))
 	#cur.close()
 	#conn.close()
 	#conn.connect()
@@ -272,22 +270,22 @@ def insertInDb(path,USN,image_extension,qno):
 	cur.execute("SELECT question_id FROM question WHERE qp_id =%s and question_num=%s",(qp_id,qno))
 	row = cur.fetchone()
 	ques_id = row[0]
-	print("Question Id:"+ str(ques_id))
+	#print("Question Id:"+ str(ques_id))
 	examtype = sys.argv[1]
 	sub_code = sys.argv[2]
 	gen_name = examtype + sub_code + qno + year + image_extension
 	URL = USN + "/" + gen_name
-	print(URL)
+	#print(URL)
 	try:
 		cur.execute("INSERT INTO image values(NULL,%s,%s,%s,%s,0)",(ques_id,USN,URL,gen_name))
 		conn.commit()
-		print("commited")
+		#print("commited")
 		cur.close()
 		conn.close()
 	except:
-		print("Rollback")
+		#print("Rollback")
 		conn.rollback()
-		print("Rollback")
+		#print("Rollback")
 		cur.close()
 		conn.close()
 	#cur.execute('SELECT last_insert_id()')
@@ -494,27 +492,24 @@ if __name__ == '__main__':
 			#read the naming convention from json file
 		
 			#get the co-ordinates and radius of filled circles
-			try:
-				points,circles = detectCircles(img,cimg)
-				if len(circles) == 0:
-					raise Exception('Error')
-			except:
+			points,circles = detectCircles(img,cimg)
+			#if len(circles) == 0:
+				#raise Exception('Error')
+			'''except:
 				info = "Could not detect circles preoperly"
-				writeToCsv(file,USN,info)
+				writeToCsv(file,USN,info)'''
 				#print("-------_ERROR--------\nCould not process image "+file+" belonging to USN : "+USN+"---------------------")
 			#check if only one marked circle is detected in 2 rows and pop it from points
-			
-			try:
-				if len(circles) == 0:
-					raise Exception('Error')
-				points = validatePoints(points)
-				#print(points)
-				#crop the answer parts and also detect corresponding question numbers
-				crop(cimg,points,circles)
-				#cv2.imshow('detected circles',cimg)
-				#cv2.waitKey(0)
-			except:
+			'''if len(circles) == 0:
+				raise Exception('Error')'''
+			points = validatePoints(points)
+			#print(points)
+			#crop the answer parts and also detect corresponding question numbers
+			crop(cimg,points,circles)
+			#cv2.imshow('detected circles',cimg)
+			#cv2.waitKey(0)
+			'''except:
 				info = "Could not crop answers preoperly"
 				writeToCsv(file,USN,info)
-				#print("-------_ERROR--------\nCould not process image "+file+" belonging to USN : "+USN+"---------------------")
+				#print("-------_ERROR--------\nCould not process image "+file+" belonging to USN : "+USN+"---------------------")'''
 
